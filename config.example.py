@@ -11,3 +11,8 @@ DB_CONFIG = {
     "database": "primegaps",
     "autocommit": False
 }
+
+# Gestion du pool commun - PrimeGaps Server V1.1
+POOL_TRIGGER_FACTOR = 60
+POOL_TARGET_FACTOR = 1728
+POOL_LOCK_NAME = "primegaps_run_pool"

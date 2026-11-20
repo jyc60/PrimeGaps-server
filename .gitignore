@@ -4,6 +4,7 @@ config.py
 # Fichiers Python temporaires
 __pycache__/
 *.py[cod]
+primegaps_pool_manager.py
 
 # Environnements virtuels
 .venv/

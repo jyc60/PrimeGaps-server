@@ -1,0 +1,10 @@
+# Configuration locale et secrets
+config.py
+
+# Fichiers Python temporaires
+__pycache__/
+*.py[cod]
+
+# Environnements virtuels
+.venv/
+venv/

@@ -88,12 +88,14 @@ def db_connect():
 # Attribution d'un workunit
 # --------------------------------------------------
 
+
 def get_workunit(username, hostname):
 
     conn = db_connect()
-    cursor = conn.cursor()
+    cursor = None
 
     try:
+        cursor = conn.cursor()
         conn.begin()
 
         cursor.execute("""
@@ -137,24 +139,43 @@ def get_workunit(username, hostname):
         return runid
 
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception as rollback_error:
+            print(
+                f"Erreur rollback get_workunit : {rollback_error}"
+            )
         raise
 
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception as close_error:
+                print(
+                    f"Erreur fermeture curseur get_workunit : {close_error}"
+                )
+
+        try:
+            conn.close()
+        except Exception as close_error:
+            print(
+                f"Erreur fermeture connexion get_workunit : {close_error}"
+            )
 
 
 # --------------------------------------------------
 # Confirmation d'un workunit terminé
 # --------------------------------------------------
 
+
 def complete_workunit(runid, username, hostname):
 
     conn = db_connect()
-    cursor = conn.cursor()
+    cursor = None
 
     try:
+        cursor = conn.cursor()
         conn.begin()
 
         cursor.execute("""
@@ -203,7 +224,7 @@ def complete_workunit(runid, username, hostname):
             return False
 
         # Validation définitive du workunit
-        cursor.execute(f"""
+        cursor.execute("""
             UPDATE runs
             SET status = 'completed',
                 completed_at = NOW(),
@@ -225,12 +246,29 @@ def complete_workunit(runid, username, hostname):
         return success
 
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception as rollback_error:
+            print(
+                f"Erreur rollback complete_workunit : {rollback_error}"
+            )
         raise
 
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception as close_error:
+                print(
+                    f"Erreur fermeture curseur complete_workunit : {close_error}"
+                )
+
+        try:
+            conn.close()
+        except Exception as close_error:
+            print(
+                f"Erreur fermeture connexion complete_workunit : {close_error}"
+            )
 
 
 # --------------------------------------------------
@@ -307,7 +345,12 @@ def check_pool(active_count):
 
     except Exception:
         if conn is not None:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except Exception as rollback_error:
+                print(
+                    f"Erreur rollback check_pool : {rollback_error}"
+                )
         raise
 
     finally:
@@ -317,15 +360,31 @@ def check_pool(active_count):
                     "SELECT RELEASE_LOCK(?)",
                     (POOL_LOCK_NAME,)
                 )
-                conn.commit()
-            except Exception as e:
-                print(f"Erreur libération verrou pool : {e}")
+                row = cursor.fetchone()
+
+                if row is None or row[0] != 1:
+                    print("Pool : échec de libération du verrou MariaDB.")
+
+            except Exception as release_error:
+                print(
+                    f"Erreur libération verrou pool : {release_error}"
+                )
 
         if cursor is not None:
-            cursor.close()
+            try:
+                cursor.close()
+            except Exception as close_error:
+                print(
+                    f"Erreur fermeture curseur check_pool : {close_error}"
+                )
 
         if conn is not None:
-            conn.close()
+            try:
+                conn.close()
+            except Exception as close_error:
+                print(
+                    f"Erreur fermeture connexion check_pool : {close_error}"
+                )
 
 def pool_manager():
     """Thread indépendant chargé de maintenir la réserve."""
@@ -402,6 +461,11 @@ def handle_client(conn, address):
 
                 username = parts[1]
                 hostname = parts[2]
+
+                if len(username) > 64 or len(hostname) > 64:
+                    send_message(stream, "ERROR")
+                    print("Identification refusée : identifiant trop long.")
+                    return
 
                 register_connection(conn)
                 registered = True
